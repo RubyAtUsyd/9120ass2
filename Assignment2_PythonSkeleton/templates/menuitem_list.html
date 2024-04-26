@@ -1,0 +1,57 @@
+{% include 'top.html' %}
+
+<div class="content">
+    <div class="container">
+        <h1 class="title" align="center">Menu Items</h1>
+        <div class="search">
+            <form class="search-top" method="POST" action="{{url_for('list_menuitem')}}">
+                <input type="text" name="search" placeholder="Search menu items" autofocus>
+                <button class="flat" type="submit">Find</button>
+                <div class="clear"></div>
+            </form>
+        </div>
+        <table class="styled">
+            <thead>
+                <tr>
+				    <th>ID</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Option</th>
+                    <th>Price</th>
+					<th>Review Date</th>
+                    <th>Reviewer</th>
+                </tr>
+            </thead>
+            <tbody>
+                    {% for i in menuitem %}
+                    <tr class='clickable-row' data-href="{{url_for('update_menuitem', menuitem_id=i.menuitem_id, name=i.name, description=i.description, category=i.category, coffeeoption=i.coffeeoption, price=i.price, reviewdate=i.reviewdate, reviewer=i.reviewer)}}" method="GET">
+					    <td>{{ i.menuitem_id }}</td>
+                        <td>{{ i.name }}</td>
+                        <td>{{ i.description }}</td>
+                        <td>{{ i.category }}</td>
+                        <td>{{ i.coffeeoption }}</td>
+                        <td>{{ i.price }}</td>
+						<td>{{ i.reviewdate }}</td>
+                        <td>{{ i.reviewer }}</td>
+                    </tr>
+                    {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<script type="text/javascript" defer="defer"> jQuery(document).ready(function($) {
+    $(".clickable-row").click(function() {
+        window.location = $(this).data("href");
+    });
+	$(".clickable-row").mouseover(function() {
+        $(this).css('background-color', '#eeeeee');
+    });
+	$(".clickable-row").mouseout(function() {
+        $(this).css('background-color', 'white');
+    });
+
+});
+</script>
+
+{% include 'bottom.html' %}

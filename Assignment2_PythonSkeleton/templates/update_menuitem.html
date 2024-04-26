@@ -1,0 +1,57 @@
+{% include 'top.html' %}
+
+<div class="content">
+    <div class="container">
+        <h1 class="title" align="center">Update Menu Item</h1>
+
+        <form class="newbooking pure-form pure-form-aligned" method="POST" action="{{url_for('update_menuitem')}}">
+			<div class="pure-control-group">
+                <label for="menuitem_id">ID:</label>
+                <input type="text" name="menuitem_id" value="{{ menuItemInfo.menuitem_id }}" size="25" readonly required>
+            </div>
+            <div class="pure-control-group">
+                <label for="name">Name:</label>
+                <input type="text" name="name" value= "{{ menuItemInfo.name }}" size="25" autofocus required>
+            </div>
+			<div class="pure-control-group">
+                <label for="description">Description:</label>
+				<textarea name="description" rows="5" cols="32">{{ menuItemInfo.description }}</textarea>
+            </div>
+            <div class="pure-control-group">
+                <label for="categoryone">Category 1:</label>
+				<input type="text" name="categoryone" value="{{ menuItemInfo.categoryone }}" size="25" required>
+            </div>
+            <div class="pure-control-group">
+                <label for="categorytwo">Category 2:</label>
+				<input type="text" name="categorytwo" value="{{ menuItemInfo.categorytwo }}" size="25">
+            </div>
+			<div class="pure-control-group">
+                <label for="categorythree">Category 3:</label>
+				<input type="text" name="categorythree" value="{{ menuItemInfo.categorythree }}" size="25">
+            </div>
+			<div class="pure-control-group">
+                <label for="coffeetype">Coffee Type:</label>
+				<input type="text" name="coffeetype" value="{{ menuItemInfo.coffeetype }}" size="25">
+            </div>
+			<div class="pure-control-group">
+                <label for="milkkind">Milk Kind:</label>
+				<input type="text" name="milkkind" value="{{ menuItemInfo.milkkind }}" size="25">
+            </div>
+			<div class="pure-control-group">
+                <label for="price">Price:</label>
+				<input type="text" name="price" value="{{ menuItemInfo.price }}" size="25" required>
+            </div>
+			<div class="pure-control-group">
+                <label for="reviewdate">Review Date:</label>
+                <input type="date" name="reviewdate" value="{{ menuItemInfo.reviewdate }}" size="25">
+			</div>
+            <div class="pure-control-group">
+                <label for="reviewer">Reviewer:</label>
+                <input type="text" name="reviewer" value="{{ menuItemInfo.reviewer }}" size="25">
+			</div>
+            <button type="submit" class="flat">Update Menu Item</button>
+        </form>
+    </div>
+</div>
+
+{% include 'bottom.html' %}
