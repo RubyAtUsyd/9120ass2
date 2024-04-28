@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import psycopg2
+import db_info
 
 #####################################################
 ##  Database Connection
@@ -12,9 +13,9 @@ Connect to the database using the connection string
 
 class PythonClient:
     # connection parameters - ENTER YOUR LOGIN AND PASSWORD HERE
-    userid = "y24s1c9120_jher0112"
-    passwd = "Javier1997."
-    myHost = "awsprddbs4836.shared.sydney.edu.au"
+    userid = db_info.userid
+    passwd = db_info.passwd
+    myHost = db_info.myHost
     conn = None
 
     # Establishes a connection to the database.
