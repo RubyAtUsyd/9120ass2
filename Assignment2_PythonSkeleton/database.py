@@ -140,8 +140,74 @@ Find a list of menu items based on the searchString provided as parameter
 See assignment description for search specification
 '''
 def findMenuItemsByCriteria(searchString):
+    python_client = PythonClient()
+    menuitems = []
+    if python_client.connectToDatabase():
+        cur = python_client.conn.cursor()
+        cur.execute("""
+        SELECT *
+FROM (
+    SELECT menuitemid, name, description,
+    CASE
+        WHEN c1.categoryname IS NOT NULL THEN c1.categoryname
+        ELSE ''
+    END
+    || CASE
+        WHEN c2.categoryname IS NOT NULL THEN '|' || c2.categoryname
+        ELSE ''
+    END
+    || CASE
+        WHEN c3.categoryname IS NOT NULL THEN '|' || c3.categoryname
+        ELSE ''
+    END AS Category,
+    CASE
+        WHEN co.coffeetypename IS NOT NULL THEN co.coffeetypename
+        ELSE  ''
+    END
+    || CASE
+        WHEN mi.milkkindname IS NOT NULL THEN '-' || mi.milkkindname
+        ELSE ''
+    END AS Option,
+    price,
+    reviewdate,
+    COALESCE(s.firstname,' ') ||' '|| COALESCE(s.lastname, ' ') as reviewer
 
-    return
+FROM menuitem m
+LEFT JOIN category c1 ON m.categoryone = c1.categoryid
+LEFT JOIN category c2 ON m.categorytwo = c2.categoryid
+LEFT JOIN category c3 ON m.categorythree = c3.categoryid
+LEFT JOIN coffeetype co ON m.coffeetype = co.coffeetypeid
+LEFT JOIN milkkind mi ON m.milkkind = mi.milkkindid
+LEFT JOIN staff s ON s.staffid = m.reviewer
+ORDER BY reviewdate ASC, description ASC, price DESC
+     ) as m
+WHERE (lower(m.name) LIKE lower(%s)
+OR lower(m.description) LIKE lower(%s)
+OR lower(m.category) LIKE lower(%s)
+OR lower(m.option) LIKE lower(%s)
+OR lower(m.reviewer) LIKE lower(%s))
+AND (m.reviewdate > CURRENT_DATE - INTERVAL '10 years' OR m.reviewdate IS NULL)
+ORDER BY CASE WHEN COALESCE(m.reviewer,'') = '' THEN 0 ELSE 1 END,
+    m.reviewdate DESC
+        """, ('%' + searchString + '%', '%' + searchString + '%', '%' + searchString + '%', '%' + searchString + '%', '%' + searchString + '%'))
+        menuitem_info = cur.fetchall()
+        for menuitem in menuitem_info:
+            menuitems.append({
+                'menuitem_id': menuitem[0],  # menuitemid
+                'name': menuitem[1],  # name
+                'description': menuitem[2],  # description
+                'category': menuitem[3],  # category
+                'coffeeoption': menuitem[4],  # option
+                'price': menuitem[5],  # price
+                'reviewdate': menuitem[6],  # reviewdate
+                'reviewer': menuitem[7]  # reviewer
+            })
+        python_client.conn.commit()
+        cur.close()
+    else:
+        menuitems = None
+    python_client.closeConnection()
+    return menuitems
 
 
 '''
