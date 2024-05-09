@@ -80,7 +80,11 @@ def findMenuItemsByStaff(staffID):
     if python_client.connectToDatabase():
         cur = python_client.conn.cursor()
         cur.execute("""
-            SELECT menuitemid, name, description,
+            SELECT menuitemid, name, 
+    CASE
+        WHEN description IS NOT NULL THEN description
+        ELSE ''
+    END description,
     CASE
         WHEN c1.categoryname IS NOT NULL THEN c1.categoryname
         ELSE ''
@@ -102,7 +106,7 @@ def findMenuItemsByStaff(staffID):
         ELSE ''
     END AS Option,
     price,
-    reviewdate,
+    TO_CHAR(reviewdate, 'DD-MM-YYYY') AS reviewdate,
     COALESCE(s.firstname,' ') ||' '|| COALESCE(s.lastname, ' ') as reviewer
 
 FROM menuitem m
@@ -113,7 +117,7 @@ LEFT JOIN coffeetype co ON m.coffeetype = co.coffeetypeid
 LEFT JOIN milkkind mi ON m.milkkind = mi.milkkindid
 LEFT JOIN staff s ON s.staffid = m.reviewer
 WHERE reviewer = %s 
-ORDER BY reviewdate ASC, description ASC, price DESC
+ORDER BY reviewdate ASC, CASE WHEN COALESCE(description,'') = '' THEN 0 ELSE 1 END ASC, description ASC, price DESC
         """, (staffID,))
         menuitem_info = cur.fetchall()
         for menuitem in menuitem_info:
@@ -147,7 +151,11 @@ def findMenuItemsByCriteria(searchString):
         cur.execute("""
         SELECT *
 FROM (
-    SELECT menuitemid, name, description,
+    SELECT menuitemid, name, 
+    CASE
+        WHEN description IS NOT NULL THEN description
+        ELSE ''
+    END description,
     CASE
         WHEN c1.categoryname IS NOT NULL THEN c1.categoryname
         ELSE ''
@@ -169,7 +177,7 @@ FROM (
         ELSE ''
     END AS Option,
     price,
-    reviewdate,
+    TO_CHAR(reviewdate, 'DD-MM-YYYY') AS reviewdate,
     COALESCE(s.firstname,' ') ||' '|| COALESCE(s.lastname, ' ') as reviewer
 
 FROM menuitem m
@@ -186,9 +194,8 @@ OR lower(m.description) LIKE lower(%s)
 OR lower(m.category) LIKE lower(%s)
 OR lower(m.option) LIKE lower(%s)
 OR lower(m.reviewer) LIKE lower(%s))
-AND (m.reviewdate > CURRENT_DATE - INTERVAL '10 years' OR m.reviewdate IS NULL)
-ORDER BY CASE WHEN COALESCE(m.reviewer,'') = '' THEN 0 ELSE 1 END,
-    m.reviewdate DESC
+AND ((TO_DATE(m.reviewdate, 'DD-MM-YYYY') >= CURRENT_DATE - INTERVAL '10 years') OR (m.reviewdate IS NULL))
+ORDER BY CASE WHEN COALESCE(m.reviewer,'') = '' THEN 0 ELSE 1 END, TO_DATE(m.reviewdate, 'DD-MM-YYYY') DESC
         """, ('%' + searchString + '%', '%' + searchString + '%', '%' + searchString + '%', '%' + searchString + '%', '%' + searchString + '%'))
         menuitem_info = cur.fetchall()
         for menuitem in menuitem_info:
@@ -214,14 +221,41 @@ ORDER BY CASE WHEN COALESCE(m.reviewer,'') = '' THEN 0 ELSE 1 END,
 Add a new menu item
 '''
 def addMenuItem(name, description, categoryone, categorytwo, categorythree, coffeetype, milkkind, price):
+    python_client = PythonClient()
+    if python_client.connectToDatabase():
+        cur = python_client.conn.cursor()
+        try:
+            cur.execute(
+            """
+                INSERT INTO menuitem (name, description, categoryone, categorytwo, categorythree, coffeetype, milkkind, price, reviewdate)
+                VALUES(
+                    %s,
+                    %s,
+                    (SELECT categoryid FROM category WHERE lower(categoryname) = lower(%s)),
+                    (SELECT categoryid FROM category WHERE lower(categoryname) = lower(%s)),
+                    (SELECT categoryid FROM category WHERE lower(categoryname) = lower(%s)),
+                    (SELECT coffeetypeid FROM coffeetype WHERE lower(coffeetypename) = lower(%s)),
+                    (SELECT milkkindid FROM milkkind WHERE lower(milkkindname) = lower(%s)),
+                    %s,
+                    CURRENT_DATE
+                    )
+                """, (name, description, categoryone, categorytwo, categorythree, coffeetype, milkkind, price))
+        except:
+            return False
 
-    return
+        python_client.conn.commit()
+        cur.close()
+        python_client.closeConnection()
+        return True
+    else:
+        python_client.closeConnection()
+        return False
 
 
 '''
 Update an existing menu item
 '''
-def updateMenuItem(name, description, categoryone, categorytwo, categorythree, coffeetype, milkkind, price, reviewdate, reviewer):
+def updateMenuItem(id, name, description, categoryone, categorytwo, categorythree, coffeetype, milkkind, price, reviewdate, reviewer):
 
     return
 
