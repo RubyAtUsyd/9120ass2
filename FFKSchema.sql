@@ -47,6 +47,8 @@ CREATE TABLE MenuItem
 	ReviewDate		DATE,
 	Reviewer		VARCHAR(10) 	REFERENCES Staff
 );
+SET datestyle = 'ISO, DMY';
+
 
 INSERT INTO Staff VALUES ('ajones','098','Anna','Jones',25,41000);
 INSERT INTO Staff VALUES ('ganderson','987','Glen','Anderson',30,49500.80);
@@ -95,5 +97,30 @@ INSERT INTO MenuItem (Name,Description,CategoryOne,CategoryTwo,CategoryThree,Cof
 	('Iced Coffee','A glass of cold espresso, milk, ice cubes, and a scoop of ice cream',1,2,NULL,2,1,7.60,NULL,NULL);
 INSERT INTO MenuItem (Name,Description,CategoryOne,CategoryTwo,CategoryThree,CoffeeType,MilkKind,Price,ReviewDate,Reviewer) VALUES 
 	('Coffee Pancake','A short stack of pancakes flecked with espresso powder and mini chocolate chips',1,NULL,NULL,NULL,NULL,8.95,'08/04/2014','janedoe');
+
+-- Concat the search string
+CREATE OR REPLACE FUNCTION concat_with_wildcards(search_string text)
+RETURNS text AS $$
+BEGIN
+    RETURN '%' || search_string || '%';
+END;
+$$ LANGUAGE plpgsql;
+
+
+--Coffee must be specified if milk kind is provided
+CREATE OR REPLACE FUNCTION check_milk_and_coffee()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.MilkKind IS NOT NULL AND NEW.CoffeeType IS NULL THEN
+        RAISE EXCEPTION 'A coffee type must have be specified.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER constraint_milk_and_coffee
+BEFORE INSERT OR UPDATE ON menuitem
+FOR EACH ROW
+EXECUTE PROCEDURE check_milk_and_coffee();
 
 COMMIT;

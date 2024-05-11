@@ -34,7 +34,6 @@ class PythonClient:
             return True
 
         except psycopg2.Error as sqle:
-            # TODO: add error handling #/
             print("psycopg2.Error : " + sqle.pgerror)
             return False
 
@@ -49,7 +48,6 @@ class PythonClient:
                 self.conn = None
                 print("Disconnected to database")
             except psycopg2.Error as sqle:
-                # TODO: add error handling #/
                 print("psycopg2.Error : " + sqle.pgerror)
 
 
@@ -189,15 +187,16 @@ LEFT JOIN milkkind mi ON m.milkkind = mi.milkkindid
 LEFT JOIN staff s ON s.staffid = m.reviewer
 ORDER BY reviewdate ASC, description ASC, price DESC
      ) as m
-WHERE (lower(m.name) LIKE lower(%s)
-OR lower(m.description) LIKE lower(%s)
-OR lower(m.category) LIKE lower(%s)
-OR lower(m.option) LIKE lower(%s)
-OR lower(m.reviewer) LIKE lower(%s))
+WHERE (lower(m.name) LIKE lower(concat_with_wildcards(%s))
+OR lower(m.description) LIKE lower(concat_with_wildcards(%s))
+OR lower(m.category) LIKE lower(concat_with_wildcards(%s))
+OR lower(m.option) LIKE lower(concat_with_wildcards(%s))
+OR lower(m.reviewer) LIKE lower(concat_with_wildcards(%s)))
 AND ((TO_DATE(m.reviewdate, 'DD-MM-YYYY') >= CURRENT_DATE - INTERVAL '10 years') OR (m.reviewdate IS NULL))
 ORDER BY CASE WHEN COALESCE(m.reviewer,'') = '' THEN 0 ELSE 1 END, TO_DATE(m.reviewdate, 'DD-MM-YYYY') DESC
-        """, ('%' + searchString + '%', '%' + searchString + '%', '%' + searchString + '%', '%' + searchString + '%', '%' + searchString + '%'))
+        """, (searchString, searchString, searchString, searchString, searchString))
         menuitem_info = cur.fetchall()
+        print(menuitem_info)
         for menuitem in menuitem_info:
             menuitems.append({
                 'menuitem_id': menuitem[0],  # menuitemid
