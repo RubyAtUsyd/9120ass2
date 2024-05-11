@@ -1,8 +1,12 @@
+SET datestyle = 'DMY';
 DROP TABLE IF EXISTS MenuItem;
 DROP TABLE IF EXISTS MilkKind;
 DROP TABLE IF EXISTS CoffeeType;
 DROP TABLE IF EXISTS Category;
 DROP TABLE IF EXISTS Staff;
+DROP FUNCTION IF EXISTS check_milk_and_coffee();
+DROP FUNCTION IF EXISTS concat_with_wildcards(text);
+
 
 CREATE TABLE Staff
 (
@@ -47,7 +51,6 @@ CREATE TABLE MenuItem
 	ReviewDate		DATE,
 	Reviewer		VARCHAR(10) 	REFERENCES Staff
 );
-SET datestyle = 'ISO, DMY';
 
 
 INSERT INTO Staff VALUES ('ajones','098','Anna','Jones',25,41000);

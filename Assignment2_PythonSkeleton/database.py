@@ -13,10 +13,12 @@ Connect to the database using the connection string
 
 class PythonClient:
     # connection parameters - ENTER YOUR LOGIN AND PASSWORD HERE
-    userid = db_info.userid
-    passwd = db_info.passwd
-    myHost = db_info.myHost
-    conn = None
+    # initializer
+    def __init__(self):
+        self.userid = db_info.userid
+        self.passwd = db_info.passwd
+        self.myHost = db_info.myHost
+        self.conn = None
 
     # Establishes a connection to the database.
     # The connection parameters are read from the instance variables above
@@ -29,7 +31,11 @@ class PythonClient:
         print("Connecting to the database...")
         try:
             # connect to the database
-            self.conn = psycopg2.connect(database=self.userid, user=self.userid, password=self.passwd, host=self.myHost)
+            self.conn = psycopg2.connect(database=self.userid,
+                                         user=self.userid,
+                                         password=self.passwd,
+                                         host=self.myHost
+                                         )
             print("Connected to database")
             return True
 
@@ -50,6 +56,19 @@ class PythonClient:
             except psycopg2.Error as sqle:
                 print("psycopg2.Error : " + sqle.pgerror)
 
+    def isConnected(self):
+        return self.conn is not None
+
+    def cursor(self):
+        return self.conn.cursor()
+
+    def commit(self):
+        self.conn.commit()
+
+    def __del__(self):
+        if self.isConnected():
+            self.closeConnection()
+
 
 '''
 Validate staff based on username and password
@@ -58,10 +77,10 @@ def checkStaffLogin(staffID, password):
 
     python_client = PythonClient()
     if python_client.connectToDatabase():
-        cur = python_client.conn.cursor()
+        cur = python_client.cursor()
         cur.execute("SELECT * FROM staff WHERE staffid = %s AND password = %s", (staffID, password))
         user_info = cur.fetchone()
-        python_client.conn.commit()
+        python_client.commit()
         cur.close()
     else:
         user_info = None
@@ -76,7 +95,7 @@ def findMenuItemsByStaff(staffID):
     python_client = PythonClient()
     menuitems = []
     if python_client.connectToDatabase():
-        cur = python_client.conn.cursor()
+        cur = python_client.cursor()
         cur.execute("""
             SELECT menuitemid, name, 
     CASE
@@ -100,12 +119,15 @@ def findMenuItemsByStaff(staffID):
         ELSE  ''
     END
     || CASE
-        WHEN mi.milkkindname IS NOT NULL THEN '-' || mi.milkkindname
+        WHEN mi.milkkindname IS NOT NULL THEN ' - ' || mi.milkkindname
         ELSE ''
     END AS Option,
     price,
-    TO_CHAR(reviewdate, 'DD-MM-YYYY') AS reviewdate,
-    COALESCE(s.firstname,' ') ||' '|| COALESCE(s.lastname, ' ') as reviewer
+    CASE 
+        WHEN reviewdate IS NOT NULL THEN TO_CHAR(reviewdate, 'DD-MM-YYYY')
+        ELSE ''
+    END As ReviewDate,
+    COALESCE(s.firstname,'') ||' '|| COALESCE(s.lastname, '') as reviewer
 
 FROM menuitem m
 LEFT JOIN category c1 ON m.categoryone = c1.categoryid
@@ -129,7 +151,7 @@ ORDER BY reviewdate ASC, CASE WHEN COALESCE(description,'') = '' THEN 0 ELSE 1 E
                 'reviewdate': menuitem[6],
                 'reviewer': menuitem[7]
             })
-        python_client.conn.commit()
+        python_client.commit()
         cur.close()
     else:
         menuitems = None
@@ -145,7 +167,7 @@ def findMenuItemsByCriteria(searchString):
     python_client = PythonClient()
     menuitems = []
     if python_client.connectToDatabase():
-        cur = python_client.conn.cursor()
+        cur = python_client.cursor()
         cur.execute("""
         SELECT *
 FROM (
@@ -171,12 +193,15 @@ FROM (
         ELSE  ''
     END
     || CASE
-        WHEN mi.milkkindname IS NOT NULL THEN '-' || mi.milkkindname
+        WHEN mi.milkkindname IS NOT NULL THEN ' - ' || mi.milkkindname
         ELSE ''
     END AS Option,
     price,
-    TO_CHAR(reviewdate, 'DD-MM-YYYY') AS reviewdate,
-    COALESCE(s.firstname,' ') ||' '|| COALESCE(s.lastname, ' ') as reviewer
+    CASE 
+        WHEN reviewdate IS NOT NULL THEN TO_CHAR(reviewdate, 'DD-MM-YYYY')
+        ELSE ''
+    END As ReviewDate,
+    COALESCE(s.firstname,'') ||' '|| COALESCE(s.lastname, '') as reviewer
 
 FROM menuitem m
 LEFT JOIN category c1 ON m.categoryone = c1.categoryid
@@ -187,14 +212,15 @@ LEFT JOIN milkkind mi ON m.milkkind = mi.milkkindid
 LEFT JOIN staff s ON s.staffid = m.reviewer
 ORDER BY reviewdate ASC, description ASC, price DESC
      ) as m
-WHERE (lower(m.name) LIKE lower(concat_with_wildcards(%s))
-OR lower(m.description) LIKE lower(concat_with_wildcards(%s))
-OR lower(m.category) LIKE lower(concat_with_wildcards(%s))
-OR lower(m.option) LIKE lower(concat_with_wildcards(%s))
-OR lower(m.reviewer) LIKE lower(concat_with_wildcards(%s)))
-AND ((TO_DATE(m.reviewdate, 'DD-MM-YYYY') >= CURRENT_DATE - INTERVAL '10 years') OR (m.reviewdate IS NULL))
-ORDER BY CASE WHEN COALESCE(m.reviewer,'') = '' THEN 0 ELSE 1 END, TO_DATE(m.reviewdate, 'DD-MM-YYYY') DESC
-        """, (searchString, searchString, searchString, searchString, searchString))
+WHERE (m.name ILIKE concat_with_wildcards(%s)
+OR m.description ILIKE concat_with_wildcards(%s)
+OR m.category ILIKE concat_with_wildcards(%s)
+OR m.option ILIKE concat_with_wildcards(%s)
+OR m.reviewer ILIKE concat_with_wildcards(%s))
+AND ((TO_DATE(m.reviewdate, 'DD-MM-YYYY') >= CURRENT_DATE - INTERVAL '10 years') OR (m.reviewdate IS NULL) OR (m.reviewdate = ''))
+ORDER BY 
+    CASE WHEN m.reviewer = '' OR m.reviewer IS NULL THEN 0 ELSE 1 END ASC,
+    CASE WHEN m.reviewdate <> '' AND m.reviewdate IS NOT NULL THEN TO_DATE(m.reviewdate, 'DD-MM-YYYY') END DESC;        """, (searchString, searchString, searchString, searchString, searchString))
         menuitem_info = cur.fetchall()
         print(menuitem_info)
         for menuitem in menuitem_info:
@@ -208,7 +234,7 @@ ORDER BY CASE WHEN COALESCE(m.reviewer,'') = '' THEN 0 ELSE 1 END, TO_DATE(m.rev
                 'reviewdate': menuitem[6],  # reviewdate
                 'reviewer': menuitem[7]  # reviewer
             })
-        python_client.conn.commit()
+        python_client.commit()
         cur.close()
     else:
         menuitems = None
@@ -222,7 +248,7 @@ Add a new menu item
 def addMenuItem(name, description, categoryone, categorytwo, categorythree, coffeetype, milkkind, price):
     python_client = PythonClient()
     if python_client.connectToDatabase():
-        cur = python_client.conn.cursor()
+        cur = python_client.cursor()
         try:
             cur.execute(
             """
@@ -242,7 +268,7 @@ def addMenuItem(name, description, categoryone, categorytwo, categorythree, coff
         except:
             return False
 
-        python_client.conn.commit()
+        python_client.commit()
         cur.close()
         python_client.closeConnection()
         return True
@@ -254,9 +280,38 @@ def addMenuItem(name, description, categoryone, categorytwo, categorythree, coff
 '''
 Update an existing menu item
 '''
-def updateMenuItem(id, name, description, categoryone, categorytwo, categorythree, coffeetype, milkkind, price, reviewdate, reviewer):
+def updateMenuItem(menu_item_id, name, description, categoryone, categorytwo, categorythree, coffeetype, milkkind, price, reviewdate, reviewer):
+    python_client = PythonClient()
+    if python_client.connectToDatabase():
+        cur = python_client.cursor()
+        try:
+            cur.execute(
+                """
+                    UPDATE menuitem 
+                    SET 
+                        name = %s,
+                        description = %s,
+                        categoryone = (SELECT categoryid FROM category WHERE lower(categoryname) = lower(%s)),
+                        categorytwo = (SELECT categoryid FROM category WHERE lower(categoryname) = lower(%s)),
+                        categorythree = (SELECT categoryid FROM category WHERE lower(categoryname) = lower(%s)),
+                        coffeetype = (SELECT coffeetypeid FROM coffeetype WHERE lower(coffeetypename) = lower(%s)),
+                        milkkind = (SELECT milkkindid FROM milkkind WHERE lower(milkkindname) = lower(%s)),
+                        price = %s,
+                        reviewDate = %s,
+                        reviewer = REPLACE(LOWER(%s), ' ', '')
+                    WHERE 
+                        MenuItemID = %s;
+                    """, (name, description, categoryone, categorytwo, categorythree, coffeetype, milkkind, price, reviewdate,
+                reviewer, menu_item_id))
+            python_client.commit()
+            cur.close()
+            python_client.closeConnection()
+            return True
 
-    return
+        except Exception as e:
+            print(e)
+            python_client.closeConnection()
+            return False
 
 
 def main():
